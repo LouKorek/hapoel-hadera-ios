@@ -15,6 +15,20 @@ func createWebView(container: UIView, WKSMH: WKScriptMessageHandler, WKND: WKNav
     userContentController.add(WKSMH, name: "push-permission-state")
     userContentController.add(WKSMH, name: "push-token")
 
+    // Fixed, app-like layout: force viewport scale 1 and disable pinch zoom.
+    let noZoomScript = WKUserScript(
+        source: """
+        (function() {
+          var meta = document.querySelector('meta[name=viewport]');
+          if (!meta) { meta = document.createElement('meta'); meta.name = 'viewport'; document.head.appendChild(meta); }
+          meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
+        })();
+        """,
+        injectionTime: .atDocumentEnd,
+        forMainFrameOnly: true
+    )
+    userContentController.addUserScript(noZoomScript)
+
     config.userContentController = userContentController
 
     config.limitsNavigationsToAppBoundDomains = true;
@@ -34,6 +48,13 @@ func createWebView(container: UIView, WKSMH: WKScriptMessageHandler, WKND: WKNav
 
     webView.scrollView.bounces = false
     webView.scrollView.contentInsetAdjustmentBehavior = .never
+    // No pinch zoom / no horizontal panning of the whole page.
+    webView.scrollView.minimumZoomScale = 1.0
+    webView.scrollView.maximumZoomScale = 1.0
+    webView.scrollView.bouncesZoom = false
+    webView.scrollView.pinchGestureRecognizer?.isEnabled = false
+    webView.scrollView.showsHorizontalScrollIndicator = false
+    webView.scrollView.alwaysBounceHorizontal = false
     webView.allowsBackForwardNavigationGestures = true
     
     let deviceModel = UIDevice.current.model

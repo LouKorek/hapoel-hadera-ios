@@ -149,6 +149,8 @@ class ViewController: UIViewController, WKNavigationDelegate, UIDocumentInteract
     
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!){
         htmlIsLoaded = true
+        // Keep pinch zoom disabled (WebKit may re-enable it after navigation)
+        webView.scrollView.pinchGestureRecognizer?.isEnabled = false
         
         self.setProgress(1.0, true)
         self.animateConnectionProblem(false)
