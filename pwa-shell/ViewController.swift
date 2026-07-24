@@ -155,13 +155,26 @@ class ViewController: UIViewController, WKNavigationDelegate, UIDocumentInteract
         self.setProgress(1.0, true)
         self.animateConnectionProblem(false)
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-            PWAShell.webView.isHidden = false
-            self.loadingView.isHidden = true
-           
-            self.setProgress(0.0, false)
-            
-            self.overrideUIStyle()
+        // Hold the splash screen until the site signals that real content is
+        // rendered (body.hh-ready). Fall back after ~8s so we never get stuck.
+        self.revealWhenContentReady(0)
+    }
+    
+    func revealWhenContentReady(_ attempts: Int) {
+        PWAShell.webView.evaluateJavaScript("document.body.classList.contains('hh-ready')") { result, _ in
+            let ready = (result as? Bool) ?? false
+            if ready || attempts >= 40 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    PWAShell.webView.isHidden = false
+                    self.loadingView.isHidden = true
+                    self.setProgress(0.0, false)
+                    self.overrideUIStyle()
+                }
+            } else {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    self.revealWhenContentReady(attempts + 1)
+                }
+            }
         }
     }
     
