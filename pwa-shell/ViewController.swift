@@ -82,6 +82,11 @@ class ViewController: UIViewController, WKNavigationDelegate, UIDocumentInteract
     }
 
     @objc func refreshWebView(_ sender: UIRefreshControl) {
+        // Pull-to-refresh behaves like a fresh launch: show the splash and
+        // keep it until the site reports its content is rendered again.
+        htmlIsLoaded = false
+        PWAShell.webView.isHidden = true
+        loadingView.isHidden = false
         PWAShell.webView?.reload()
         sender.endRefreshing()
     }
