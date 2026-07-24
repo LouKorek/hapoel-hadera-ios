@@ -1,0 +1,7 @@
+Pods/
+build/
+*.ipa
+*.mobileprovision
+*.cer
+*.p12
+.DS_Store
