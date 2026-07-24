@@ -12,8 +12,32 @@ platform :ios do
       is_key_content_base64: false
     )
 
-    # Create/fetch App Store distribution certificate + provisioning profile
-    cert(api_key: api_key)
+    # Free a distribution-certificate slot: revoke certs created by previous CI
+    # runs. Never touches the pre-existing certificate 6YUQ5USSD9.
+    begin
+      token = Spaceship::ConnectAPI::Token.create(
+        key_id: ENV["ASC_KEY_ID"],
+        issuer_id: ENV["ASC_ISSUER_ID"],
+        key: ENV["ASC_KEY_P8"]
+      )
+      Spaceship::ConnectAPI.token = token
+      Spaceship::ConnectAPI::Certificate.all.each do |c|
+        next unless ["DISTRIBUTION", "IOS_DISTRIBUTION"].include?(c.certificate_type)
+        next if c.id == "6YUQ5USSD9"
+        UI.message("Revoking old CI distribution certificate #{c.id}")
+        Spaceship::ConnectAPI.delete_certificate(certificate_id: c.id)
+      end
+    rescue => e
+      UI.important("Certificate cleanup skipped: #{e.message}")
+    end
+
+    keychain_path = File.expand_path("~/Library/Keychains/fastlane_tmp_keychain-db")
+
+    cert(
+      api_key: api_key,
+      keychain_path: keychain_path,
+      keychain_password: ""
+    )
     sigh(api_key: api_key, app_identifier: "il.co.hapoelhadera.app", force: true)
 
     update_code_signing_settings(
