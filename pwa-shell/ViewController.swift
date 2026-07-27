@@ -1,6 +1,5 @@
 import UIKit
 import WebKit
-import AVFoundation
 
 var webView: WKWebView! = nil
 
@@ -20,9 +19,6 @@ class ViewController: UIViewController, WKNavigationDelegate, UIDocumentInteract
     @IBOutlet weak var connectionProblemView: UIImageView!
     @IBOutlet weak var webviewView: UIView!
     var toolbarView: UIToolbar!
-    private var splashPlayer: AVPlayer?
-    private var splashLayer: AVPlayerLayer?
-    private var splashVideoView: UIView?
     
     var htmlIsLoaded = false;
     private var loadingMode = LoadingMode.defaultCachePolicy
@@ -42,7 +38,6 @@ class ViewController: UIViewController, WKNavigationDelegate, UIDocumentInteract
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        startSplashVideo()
         initWebView()
         initToolbarView()
         loadRootUrl()
@@ -54,48 +49,6 @@ class ViewController: UIViewController, WKNavigationDelegate, UIDocumentInteract
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         PWAShell.webView.frame = calcWebviewFrame(webviewView: webviewView, toolbarView: nil)
-        splashVideoView?.frame = loadingView.bounds
-        splashLayer?.frame = loadingView.bounds
-    }
-
-    // Plays the branded opening clip over the static splash image. The still
-    // image stays behind it, so the very first frame is on screen instantly and
-    // there is never a blank flash while the video decodes.
-    func startSplashVideo() {
-        guard let url = Bundle.main.url(forResource: "splash", withExtension: "mp4") else { return }
-        let player = AVPlayer(url: url)
-        player.isMuted = true
-        player.actionAtItemEnd = .pause
-
-        // The clip lives in its own view placed directly ABOVE the still poster
-        // (subview 0) and below the progress / offline indicators, so the first
-        // frame is visible instantly and the video is never hidden behind it.
-        let container = UIView(frame: loadingView.bounds)
-        container.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        container.backgroundColor = .clear
-        container.isUserInteractionEnabled = false
-        let insertAt = min(1, loadingView.subviews.count)
-        loadingView.insertSubview(container, at: insertAt)
-
-        let layer = AVPlayerLayer(player: player)
-        layer.videoGravity = .resizeAspectFill
-        layer.frame = container.bounds
-        container.layer.addSublayer(layer)
-
-        splashVideoView = container
-        splashLayer = layer
-        splashPlayer = player
-        player.play()
-    }
-
-    func restartSplashVideo() {
-        guard let player = splashPlayer else { return }
-        player.seek(to: .zero)
-        player.play()
-    }
-
-    func stopSplashVideo() {
-        splashPlayer?.pause()
     }
     
     @objc func keyboardWillHide(_ notification: NSNotification) {
@@ -134,7 +87,6 @@ class ViewController: UIViewController, WKNavigationDelegate, UIDocumentInteract
         htmlIsLoaded = false
         PWAShell.webView.isHidden = true
         loadingView.isHidden = false
-        restartSplashVideo()
         PWAShell.webView?.reload()
         sender.endRefreshing()
     }
@@ -220,7 +172,6 @@ class ViewController: UIViewController, WKNavigationDelegate, UIDocumentInteract
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                     PWAShell.webView.isHidden = false
                     self.loadingView.isHidden = true
-                    self.stopSplashVideo()
                     self.setProgress(0.0, false)
                     self.overrideUIStyle()
                 }
