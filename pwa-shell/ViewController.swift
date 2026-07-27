@@ -1,5 +1,6 @@
 import UIKit
 import WebKit
+import AVFoundation
 
 var webView: WKWebView! = nil
 
@@ -19,6 +20,8 @@ class ViewController: UIViewController, WKNavigationDelegate, UIDocumentInteract
     @IBOutlet weak var connectionProblemView: UIImageView!
     @IBOutlet weak var webviewView: UIView!
     var toolbarView: UIToolbar!
+    private var splashPlayer: AVPlayer?
+    private var splashLayer: AVPlayerLayer?
     
     var htmlIsLoaded = false;
     private var loadingMode = LoadingMode.defaultCachePolicy
@@ -38,6 +41,7 @@ class ViewController: UIViewController, WKNavigationDelegate, UIDocumentInteract
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        startSplashVideo()
         initWebView()
         initToolbarView()
         loadRootUrl()
@@ -49,6 +53,34 @@ class ViewController: UIViewController, WKNavigationDelegate, UIDocumentInteract
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         PWAShell.webView.frame = calcWebviewFrame(webviewView: webviewView, toolbarView: nil)
+        splashLayer?.frame = loadingView.bounds
+    }
+
+    // Plays the branded opening clip over the static splash image. The still
+    // image stays behind it, so the very first frame is on screen instantly and
+    // there is never a blank flash while the video decodes.
+    func startSplashVideo() {
+        guard let url = Bundle.main.url(forResource: "splash", withExtension: "mp4") else { return }
+        let player = AVPlayer(url: url)
+        player.isMuted = true
+        player.actionAtItemEnd = .pause
+        let layer = AVPlayerLayer(player: player)
+        layer.videoGravity = .resizeAspectFill
+        layer.frame = loadingView.bounds
+        loadingView.layer.insertSublayer(layer, at: 0)
+        splashPlayer = player
+        splashLayer = layer
+        player.play()
+    }
+
+    func restartSplashVideo() {
+        guard let player = splashPlayer else { return }
+        player.seek(to: .zero)
+        player.play()
+    }
+
+    func stopSplashVideo() {
+        splashPlayer?.pause()
     }
     
     @objc func keyboardWillHide(_ notification: NSNotification) {
@@ -87,6 +119,7 @@ class ViewController: UIViewController, WKNavigationDelegate, UIDocumentInteract
         htmlIsLoaded = false
         PWAShell.webView.isHidden = true
         loadingView.isHidden = false
+        restartSplashVideo()
         PWAShell.webView?.reload()
         sender.endRefreshing()
     }
@@ -172,6 +205,7 @@ class ViewController: UIViewController, WKNavigationDelegate, UIDocumentInteract
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                     PWAShell.webView.isHidden = false
                     self.loadingView.isHidden = true
+                    self.stopSplashVideo()
                     self.setProgress(0.0, false)
                     self.overrideUIStyle()
                 }
