@@ -22,6 +22,7 @@ class ViewController: UIViewController, WKNavigationDelegate, UIDocumentInteract
     var toolbarView: UIToolbar!
     private var splashPlayer: AVPlayer?
     private var splashLayer: AVPlayerLayer?
+    private var splashVideoView: UIView?
     
     var htmlIsLoaded = false;
     private var loadingMode = LoadingMode.defaultCachePolicy
@@ -53,6 +54,7 @@ class ViewController: UIViewController, WKNavigationDelegate, UIDocumentInteract
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         PWAShell.webView.frame = calcWebviewFrame(webviewView: webviewView, toolbarView: nil)
+        splashVideoView?.frame = loadingView.bounds
         splashLayer?.frame = loadingView.bounds
     }
 
@@ -64,12 +66,25 @@ class ViewController: UIViewController, WKNavigationDelegate, UIDocumentInteract
         let player = AVPlayer(url: url)
         player.isMuted = true
         player.actionAtItemEnd = .pause
+
+        // The clip lives in its own view placed directly ABOVE the still poster
+        // (subview 0) and below the progress / offline indicators, so the first
+        // frame is visible instantly and the video is never hidden behind it.
+        let container = UIView(frame: loadingView.bounds)
+        container.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        container.backgroundColor = .clear
+        container.isUserInteractionEnabled = false
+        let insertAt = min(1, loadingView.subviews.count)
+        loadingView.insertSubview(container, at: insertAt)
+
         let layer = AVPlayerLayer(player: player)
         layer.videoGravity = .resizeAspectFill
-        layer.frame = loadingView.bounds
-        loadingView.layer.insertSublayer(layer, at: 0)
-        splashPlayer = player
+        layer.frame = container.bounds
+        container.layer.addSublayer(layer)
+
+        splashVideoView = container
         splashLayer = layer
+        splashPlayer = player
         player.play()
     }
 
