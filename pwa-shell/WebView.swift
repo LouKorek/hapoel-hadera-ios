@@ -138,6 +138,21 @@ extension ViewController: WKUIDelegate, WKDownloadDelegate {
             return decisionHandler(.download)
         }
 
+        // Schemes the web view cannot load itself must be handed to the system
+        // before the host allow-list is consulted. The allow-list matches on
+        // host alone, so webcal://hapoelhadera.co.il/... would otherwise look
+        // like an internal link, be allowed, and then fail silently instead of
+        // opening Calendar's subscribe sheet.
+        if let requestUrl = navigationAction.request.url,
+           let scheme = requestUrl.scheme?.lowercased(),
+           !["http", "https", "about", "blob", "file", "data"].contains(scheme) {
+            decisionHandler(.cancel)
+            if UIApplication.shared.canOpenURL(requestUrl) {
+                UIApplication.shared.open(requestUrl)
+            }
+            return
+        }
+
         if let requestUrl = navigationAction.request.url{
             if let requestHost = requestUrl.host {
                 // NOTE: Match auth origin first, because host origin may be a subset of auth origin and may therefore always match

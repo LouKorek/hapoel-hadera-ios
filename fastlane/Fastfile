@@ -38,6 +38,22 @@ platform :ios do
       keychain_path: keychain_path,
       keychain_password: ""
     )
+    # Push needs the capability on the App ID before the profile is generated,
+    # otherwise the aps-environment entitlement fails code signing. Idempotent:
+    # if it is already enabled Apple returns an error and we move on.
+    begin
+      bundle = Spaceship::ConnectAPI::BundleId.all(filter: { identifier: "il.co.hapoelhadera.app" }).first
+      if bundle
+        enabled = Spaceship::ConnectAPI::BundleIdCapability.all(bundle_id_id: bundle.id).map(&:capability_type)
+        unless enabled.include?("PUSH_NOTIFICATIONS")
+          UI.message("Enabling Push Notifications on #{bundle.identifier}")
+          Spaceship::ConnectAPI::BundleIdCapability.create(bundle_id_id: bundle.id, capability_type: "PUSH_NOTIFICATIONS")
+        end
+      end
+    rescue => e
+      UI.important("Push capability check skipped: #{e.message}")
+    end
+
     sigh(api_key: api_key, app_identifier: "il.co.hapoelhadera.app", force: true)
 
     update_code_signing_settings(
