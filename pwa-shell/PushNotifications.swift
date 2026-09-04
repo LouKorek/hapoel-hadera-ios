@@ -69,6 +69,10 @@ enum PushRegistry {
 
     static func didFail(_ error: Error) {
         pendingTokenRequest = false
+        // The page logs the reason to the club's server so a registration
+        // failure is diagnosable from the admin console instead of invisible.
+        let msg = error.localizedDescription.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "'", with: "\\'")
+        checkViewAndEvaluate(event: "push-error", detail: "'\(msg)'")
         checkViewAndEvaluate(event: "push-token", detail: "null")
     }
 }
