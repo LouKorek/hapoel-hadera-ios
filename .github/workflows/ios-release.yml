@@ -31,6 +31,25 @@ jobs:
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
         run: bundle exec fastlane ios release
 
+      # Print what actually shipped: the entitlements and the profile's
+      # capabilities. Push registration fails silently on the device if
+      # aps-environment is missing here.
+      - name: Inspect signed app
+        if: always()
+        run: |
+          set -e
+          cd build && rm -rf _ipa && mkdir _ipa && cd _ipa && unzip -q ../hapoel-hadera.ipa
+          APP=$(ls -d Payload/*.app | head -1)
+          echo "== entitlements =="; codesign -d --entitlements :- "$APP" 2>/dev/null || codesign -d --entitlements - "$APP"
+          echo "== embedded profile: Entitlements =="; security cms -D -i "$APP/embedded.mobileprovision" | plutil -extract Entitlements xml1 -o - -
+
+      - name: Upload IPA
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hapoel-hadera-ipa
+          path: build/hapoel-hadera.ipa
+
       - name: Upload build artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4
