@@ -60,12 +60,17 @@ enum LiveActivityBridge {
         observedActivities.insert(activity.id)
         let matchId = activity.attributes.matchId
         let lastToken = TokenBox()
+        let report: (Data) -> Void = { data in
+            let token = data.map { String(format: "%02x", $0) }.joined()
+            guard token != lastToken.value else { return }
+            lastToken.value = token
+            post(["deviceToken": PushRegistry.deviceToken ?? "", "matchId": matchId, "activityId": activity.id, "activityToken": token])
+        }
+        // A card started by push already carries its token — the updates
+        // sequence does not replay it, so read it first, then follow changes.
+        if let current = activity.pushToken { report(current) }
         Task {
-            for await data in activity.pushTokenUpdates {
-                let token = data.map { String(format: "%02x", $0) }.joined()
-                lastToken.value = token
-                post(["deviceToken": PushRegistry.deviceToken ?? "", "matchId": matchId, "activityId": activity.id, "activityToken": token])
-            }
+            for await data in activity.pushTokenUpdates { report(data) }
         }
         Task {
             for await state in activity.activityStateUpdates {
@@ -79,12 +84,25 @@ enum LiveActivityBridge {
     }
     #endif
 
+    // The report often goes out from a background launch (a push-to-start
+    // woke the app); a background task keeps the process alive until the
+    // request has completed instead of letting iOS suspend it mid-flight.
     private static func post(_ body: [String: Any]) {
         guard let data = try? JSONSerialization.data(withJSONObject: body) else { return }
         var req = URLRequest(url: endpoint)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.httpBody = data
-        URLSession.shared.dataTask(with: req).resume()
+        DispatchQueue.main.async {
+            var bg = UIBackgroundTaskIdentifier.invalid
+            bg = UIApplication.shared.beginBackgroundTask(withName: "live-activity-token") {
+                UIApplication.shared.endBackgroundTask(bg); bg = .invalid
+            }
+            URLSession.shared.dataTask(with: req) { _, _, _ in
+                DispatchQueue.main.async {
+                    if bg != .invalid { UIApplication.shared.endBackgroundTask(bg); bg = .invalid }
+                }
+            }.resume()
+        }
     }
 }
