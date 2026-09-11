@@ -54,16 +54,46 @@ platform :ios do
       UI.important("Push capability check skipped: #{e.message}")
     end
 
+    # The Live Activity widget is its own extension target with its own
+    # bundle id, App ID and provisioning profile. The target is generated
+    # from scripts/add_widget_target.rb so the pbxproj stays reviewable.
+    sh("cd .. && bundle exec ruby scripts/add_widget_target.rb")
+    widget_id = "il.co.hapoelhadera.app.LiveMatchWidget"
+    begin
+      unless Spaceship::ConnectAPI::BundleId.all(filter: { identifier: widget_id }).any? { |b| b.identifier == widget_id }
+        UI.message("Registering App ID #{widget_id}")
+        Spaceship::ConnectAPI::BundleId.create(name: "Hapoel Hadera Live Match Widget", platform: "IOS", identifier: widget_id)
+      end
+    rescue => e
+      UI.important("Widget App ID check skipped: #{e.message}")
+    end
+
     sigh(api_key: api_key, app_identifier: "il.co.hapoelhadera.app", force: true)
+    app_profile_name = lane_context[SharedValues::SIGH_NAME]
+    app_profile_uuid = lane_context[SharedValues::SIGH_UUID]
+    sigh(api_key: api_key, app_identifier: widget_id, force: true)
+    widget_profile_name = lane_context[SharedValues::SIGH_NAME]
+    widget_profile_uuid = lane_context[SharedValues::SIGH_UUID]
 
     update_code_signing_settings(
       path: "pwa-shell.xcodeproj",
+      targets: ["pwa-shell"],
       use_automatic_signing: false,
       team_id: "YZTLGU87C6",
       bundle_identifier: "il.co.hapoelhadera.app",
       code_sign_identity: "Apple Distribution",
-      profile_name: lane_context[SharedValues::SIGH_NAME],
-      profile_uuid: lane_context[SharedValues::SIGH_UUID]
+      profile_name: app_profile_name,
+      profile_uuid: app_profile_uuid
+    )
+    update_code_signing_settings(
+      path: "pwa-shell.xcodeproj",
+      targets: ["LiveMatchWidget"],
+      use_automatic_signing: false,
+      team_id: "YZTLGU87C6",
+      bundle_identifier: widget_id,
+      code_sign_identity: "Apple Distribution",
+      profile_name: widget_profile_name,
+      profile_uuid: widget_profile_uuid
     )
 
     cocoapods
@@ -79,7 +109,8 @@ platform :ios do
       output_name: "hapoel-hadera.ipa",
       export_options: {
         provisioningProfiles: {
-          "il.co.hapoelhadera.app" => lane_context[SharedValues::SIGH_NAME]
+          "il.co.hapoelhadera.app" => app_profile_name,
+          widget_id => widget_profile_name
         }
       }
     )

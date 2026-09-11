@@ -42,6 +42,8 @@ jobs:
           APP=$(ls -d Payload/*.app | head -1)
           echo "== entitlements (signed app) =="; codesign -d --entitlements - --xml "$APP" | plutil -p - || codesign -d --entitlements - "$APP"
           echo "== codesign details =="; codesign -dvvv "$APP" 2>&1 | grep -iE "Identifier|TeamIdentifier|Authority|Format" || true
+          echo "== embedded extensions =="; ls -la "$APP/PlugIns" 2>/dev/null || echo "(none)"
+          echo "== live activities flag =="; plutil -extract NSSupportsLiveActivities raw -o - "$APP/Info.plist" || echo "(missing)"
           echo "== embedded profile: Entitlements =="; security cms -D -i "$APP/embedded.mobileprovision" | plutil -extract Entitlements xml1 -o - -
 
       - name: Upload IPA

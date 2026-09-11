@@ -61,6 +61,7 @@ enum PushRegistry {
     static func didRegister(_ tokenData: Data) {
         let token = tokenData.map { String(format: "%02x", $0) }.joined()
         deviceToken = token
+        LiveActivityBridge.deviceTokenChanged()
         if pendingTokenRequest {
             pendingTokenRequest = false
             checkViewAndEvaluate(event: "push-token", detail: "'\(token)'")

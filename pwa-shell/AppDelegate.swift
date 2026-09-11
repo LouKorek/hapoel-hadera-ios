@@ -17,6 +17,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 DispatchQueue.main.async { application.registerForRemoteNotifications() }
             }
         }
+        // Live-match card (Lock Screen / Dynamic Island): report the tokens
+        // the server needs. Also runs on the silent background launch that a
+        // push-to-start triggers.
+        LiveActivityBridge.start()
         return true
     }
 
