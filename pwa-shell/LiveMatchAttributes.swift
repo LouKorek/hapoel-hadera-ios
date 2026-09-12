@@ -25,5 +25,7 @@ struct LiveMatchAttributes: ActivityAttributes {
     var ourSide: String         // "home" | "away"
     var comp: String            // localised competition label
     var url: String             // deep link opened on tap
+    var homeLogo: String        // crest URL, "" for none (see CrestStore)
+    var awayLogo: String
 }
 #endif

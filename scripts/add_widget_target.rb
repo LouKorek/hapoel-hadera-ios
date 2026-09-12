@@ -13,6 +13,7 @@ EXT_TARGET   = "LiveMatchWidget"
 EXT_BUNDLE   = "il.co.hapoelhadera.app.LiveMatchWidget"
 TEAM         = "YZTLGU87C6"
 SHARED_FILE  = "pwa-shell/LiveMatchAttributes.swift"
+CREST_FILE   = "pwa-shell/CrestStore.swift"
 BRIDGE_FILE  = "pwa-shell/LiveActivityBridge.swift"
 
 project = Xcodeproj::Project.open(PROJECT)
@@ -23,8 +24,9 @@ def file_ref(group, path)
   group.files.find { |f| f.path == path } || group.new_file(path)
 end
 
-# 1. New app-side sources on the app target (shared attributes + bridge).
-[SHARED_FILE, BRIDGE_FILE].each do |path|
+# 1. New app-side sources on the app target (shared attributes, crest
+#    store, bridge).
+[SHARED_FILE, CREST_FILE, BRIDGE_FILE].each do |path|
   ref = file_ref(main_group, path)
   unless app.source_build_phase.files_references.include?(ref)
     app.source_build_phase.add_file_reference(ref)
@@ -45,7 +47,9 @@ else
   widget_src = ext_group.new_file("LiveMatchWidget.swift")
   ext.source_build_phase.add_file_reference(widget_src)
   ext.source_build_phase.add_file_reference(file_ref(main_group, SHARED_FILE))
+  ext.source_build_phase.add_file_reference(file_ref(main_group, CREST_FILE))
   ext_group.new_file("Info.plist")
+  ext_group.new_file("LiveMatchWidget.entitlements")
 
   ["WidgetKit", "SwiftUI"].each { |fw| ext.add_system_framework(fw) }
 
@@ -66,7 +70,7 @@ else
     s["ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME"] = "AccentColor"
     s["GENERATE_INFOPLIST_FILE"]     = "NO"
     s["LD_RUNPATH_SEARCH_PATHS"]     = ["$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks"]
-    s.delete("CODE_SIGN_ENTITLEMENTS")
+    s["CODE_SIGN_ENTITLEMENTS"]      = "#{EXT_TARGET}/LiveMatchWidget.entitlements"
   end
 
   # 3. Embed it in the app.

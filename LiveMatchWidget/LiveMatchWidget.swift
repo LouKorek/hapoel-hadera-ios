@@ -27,11 +27,11 @@ struct LiveMatchWidget: Widget {
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    TeamName(context.attributes.homeName, ours: context.attributes.ourSide == "home")
+                    TeamName(context.attributes.homeName, logo: context.attributes.homeLogo, ours: context.attributes.ourSide == "home")
                         .padding(.leading, 6)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    TeamName(context.attributes.awayName, ours: context.attributes.ourSide == "away")
+                    TeamName(context.attributes.awayName, logo: context.attributes.awayLogo, ours: context.attributes.ourSide == "away")
                         .padding(.trailing, 6)
                 }
                 DynamicIslandExpandedRegion(.center) {
@@ -43,9 +43,7 @@ struct LiveMatchWidget: Widget {
                 }
             } compactLeading: {
                 HStack(spacing: 3) {
-                    Image(systemName: "soccerball")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(clubRed)
+                    Crest(url: context.attributes.ourSide == "home" ? context.attributes.homeLogo : context.attributes.awayLogo, ours: true, size: 18)
                     Text("\(context.state.homeScore)–\(context.state.awayScore)")
                         .font(.system(size: 14, weight: .heavy, design: .rounded))
                         .monospacedDigit()
@@ -74,10 +72,10 @@ private struct LockScreenView: View {
     var body: some View {
         VStack(spacing: 8) {
             HStack(alignment: .center) {
-                TeamName(context.attributes.homeName, ours: context.attributes.ourSide == "home")
+                TeamName(context.attributes.homeName, logo: context.attributes.homeLogo, ours: context.attributes.ourSide == "home")
                     .frame(maxWidth: .infinity, alignment: .leading)
                 ScoreBlock(home: context.state.homeScore, away: context.state.awayScore, size: 34)
-                TeamName(context.attributes.awayName, ours: context.attributes.ourSide == "away")
+                TeamName(context.attributes.awayName, logo: context.attributes.awayLogo, ours: context.attributes.ourSide == "away")
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
             StatusLine(state: context.state)
@@ -88,24 +86,45 @@ private struct LockScreenView: View {
     }
 }
 
-// Team name; our side carries the club badge so the card reads at a glance.
+// Crest + team name. The crest comes from the shared container the app
+// filled (see CrestStore); until it is there — or when the opponent has
+// none — a neutral shield stands in.
 private struct TeamName: View {
     let name: String
+    let logo: String
     let ours: Bool
-    init(_ name: String, ours: Bool) { self.name = name; self.ours = ours }
+    init(_ name: String, logo: String, ours: Bool) { self.name = name; self.logo = logo; self.ours = ours }
     var body: some View {
-        HStack(spacing: 5) {
-            if ours {
-                Image(systemName: "shield.fill")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(clubRed)
-            }
+        VStack(spacing: 4) {
+            Crest(url: logo, ours: ours, size: 30)
             Text(name)
-                .font(.system(size: 14, weight: .heavy))
+                .font(.system(size: 13, weight: .heavy))
                 .lineLimit(2)
-                .minimumScaleFactor(0.75)
+                .minimumScaleFactor(0.7)
                 .multilineTextAlignment(.center)
         }
+    }
+}
+
+private struct Crest: View {
+    let url: String
+    let ours: Bool
+    let size: CGFloat
+    var body: some View {
+        ZStack {
+            Circle().fill(Color.white.opacity(0.92))
+            if let img = CrestStore.image(for: url) {
+                Image(uiImage: img)
+                    .resizable()
+                    .scaledToFit()
+                    .padding(size * 0.1)
+            } else {
+                Image(systemName: "shield.fill")
+                    .font(.system(size: size * 0.5, weight: .bold))
+                    .foregroundStyle(ours ? clubRed : Color(white: 0.6))
+            }
+        }
+        .frame(width: size, height: size)
     }
 }
 

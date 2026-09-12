@@ -27,6 +27,9 @@ enum LiveActivityBridge {
     static func start() {
         guard !started else { return }
         started = true
+        // The club crest is the same for every match — have it on disk
+        // before the first card ever opens.
+        CrestStore.fetch("https://hapoelhadera.co.il/img/logo-512.webp") { _ in }
         #if canImport(ActivityKit)
         if #available(iOS 17.2, *) {
             Task {
@@ -71,6 +74,23 @@ enum LiveActivityBridge {
         if let current = activity.pushToken { report(current) }
         Task {
             for await data in activity.pushTokenUpdates { report(data) }
+        }
+        // Crests: fetch both into the shared container, then re-render the
+        // card with its current state so the images appear without waiting
+        // for the next match event.
+        let logos = [activity.attributes.homeLogo, activity.attributes.awayLogo].filter { !$0.isEmpty }
+        let missing = logos.filter { !CrestStore.has($0) }
+        if !missing.isEmpty {
+            let pending = TokenBox(); pending.value = String(missing.count)
+            for url in missing {
+                CrestStore.fetch(url) { _ in
+                    let left = (Int(pending.value) ?? 1) - 1
+                    pending.value = String(left)
+                    if left <= 0 {
+                        Task { await activity.update(ActivityContent(state: activity.content.state, staleDate: nil)) }
+                    }
+                }
+            }
         }
         Task {
             for await state in activity.activityStateUpdates {
