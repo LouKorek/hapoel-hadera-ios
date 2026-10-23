@@ -96,8 +96,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 
     func sceneWillEnterForeground(_ scene: UIScene) {
-        // Called as the scene transitions from the background to the foreground.
-        // Use this method to undo the changes made on entering the background.
+        // Warm the live-match crests and re-check any card on screen.
+        LiveActivityBridge.refresh()
     }
 
     func sceneDidEnterBackground(_ scene: UIScene) {

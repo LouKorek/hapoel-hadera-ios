@@ -30,6 +30,7 @@ enum LiveActivityBridge {
         // The club crest is the same for every match — have it on disk
         // before the first card ever opens.
         CrestStore.fetch("https://hapoelhadera.co.il/img/logo-512.webp") { _ in }
+        refresh()
         #if canImport(ActivityKit)
         if #available(iOS 17.2, *) {
             Task {
@@ -75,23 +76,7 @@ enum LiveActivityBridge {
         Task {
             for await data in activity.pushTokenUpdates { report(data) }
         }
-        // Crests: fetch both into the shared container, then re-render the
-        // card with its current state so the images appear without waiting
-        // for the next match event.
-        let logos = [activity.attributes.homeLogo, activity.attributes.awayLogo].filter { !$0.isEmpty }
-        let missing = logos.filter { !CrestStore.has($0) }
-        if !missing.isEmpty {
-            let pending = TokenBox(); pending.value = String(missing.count)
-            for url in missing {
-                CrestStore.fetch(url) { _ in
-                    let left = (Int(pending.value) ?? 1) - 1
-                    pending.value = String(left)
-                    if left <= 0 {
-                        Task { await activity.update(ActivityContent(state: activity.content.state, staleDate: nil)) }
-                    }
-                }
-            }
-        }
+        ensureCrests(activity)
         Task {
             for await state in activity.activityStateUpdates {
                 if state == .dismissed || state == .ended {
@@ -102,7 +87,56 @@ enum LiveActivityBridge {
             }
         }
     }
+
+    // Crests: fetch both into the shared container, then re-render the card
+    // with its current state so the images appear without waiting for the
+    // next match event. Held open with a background task — this usually runs
+    // on the silent launch a push-to-start triggers, which iOS suspends fast.
+    @available(iOS 16.2, *)
+    private static func ensureCrests(_ activity: Activity<LiveMatchAttributes>) {
+        let logos = [activity.attributes.homeLogo, activity.attributes.awayLogo].filter { !$0.isEmpty }
+        let missing = logos.filter { !CrestStore.has($0) }
+        guard !missing.isEmpty else { return }
+        DispatchQueue.main.async {
+            var bg = UIBackgroundTaskIdentifier.invalid
+            bg = UIApplication.shared.beginBackgroundTask(withName: "live-activity-crests") {
+                UIApplication.shared.endBackgroundTask(bg); bg = .invalid
+            }
+            let pending = TokenBox(); pending.value = String(missing.count)
+            for url in missing {
+                CrestStore.fetch(url) { _ in
+                    let left = (Int(pending.value) ?? 1) - 1
+                    pending.value = String(left)
+                    if left <= 0 {
+                        Task {
+                            await activity.update(ActivityContent(state: activity.content.state, staleDate: nil))
+                            DispatchQueue.main.async { if bg != .invalid { UIApplication.shared.endBackgroundTask(bg); bg = .invalid } }
+                        }
+                    }
+                }
+            }
+        }
+    }
     #endif
+
+    // On every foreground: the current match's crests are warmed before the
+    // card opens (the opponent's crest is known as soon as the match is set
+    // up in the console), and any card already on screen is re-checked.
+    static func refresh() {
+        URLSession.shared.dataTask(with: URL(string: "https://hapoelhadera.co.il/api/live?_=\(Int(Date().timeIntervalSince1970))")!) { data, _, _ in
+            guard let data, let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let match = json["match"] as? [String: Any] else { return }
+            if let logo = match["oppLogo"] as? String, !logo.isEmpty {
+                let abs = logo.hasPrefix("http") ? logo : "https://hapoelhadera.co.il" + logo
+                if !abs.lowercased().hasSuffix(".svg") { CrestStore.fetch(abs) { _ in } }
+            }
+        }.resume()
+        #if canImport(ActivityKit)
+        if #available(iOS 16.2, *) {
+            for activity in Activity<LiveMatchAttributes>.activities { ensureCrests(activity) }
+        }
+        #endif
+    }
 
     // The report often goes out from a background launch (a push-to-start
     // woke the app); a background task keeps the process alive until the

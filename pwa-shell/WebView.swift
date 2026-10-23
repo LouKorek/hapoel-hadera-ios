@@ -56,7 +56,14 @@ func createWebView(container: UIView, WKSMH: WKScriptMessageHandler, WKND: WKNav
     webView.scrollView.showsHorizontalScrollIndicator = false
     webView.scrollView.alwaysBounceHorizontal = false
     webView.allowsBackForwardNavigationGestures = true
-    
+    // Nothing that gives the web away: no 3D-touch link previews, and no
+    // white flash between pages — the web view's own backdrop is the site's
+    // dark header colour, so a navigation never shows a blank sheet.
+    webView.allowsLinkPreview = false
+    webView.isOpaque = false
+    webView.backgroundColor = UIColor(red: 0.06, green: 0.06, blue: 0.08, alpha: 1)
+    webView.scrollView.backgroundColor = webView.backgroundColor
+
     let deviceModel = UIDevice.current.model
     let osVersion = UIDevice.current.systemVersion
     webView.configuration.applicationNameForUserAgent = "Safari/604.1"

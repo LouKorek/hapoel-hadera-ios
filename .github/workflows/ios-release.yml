@@ -43,6 +43,8 @@ jobs:
           echo "== entitlements (signed app) =="; codesign -d --entitlements - --xml "$APP" | plutil -p - || codesign -d --entitlements - "$APP"
           echo "== codesign details =="; codesign -dvvv "$APP" 2>&1 | grep -iE "Identifier|TeamIdentifier|Authority|Format" || true
           echo "== embedded extensions =="; ls -la "$APP/PlugIns" 2>/dev/null || echo "(none)"
+          for X in "$APP"/PlugIns/*.appex; do echo "== entitlements ($X) =="; codesign -d --entitlements - --xml "$X" | plutil -p - || true; done
+          echo "== app groups in app =="; codesign -d --entitlements - --xml "$APP" | plutil -p - | grep -A2 application-groups || echo "(none)"
           echo "== live activities flag =="; plutil -extract NSSupportsLiveActivities raw -o - "$APP/Info.plist" || echo "(missing)"
           echo "== embedded profile: Entitlements =="; security cms -D -i "$APP/embedded.mobileprovision" | plutil -extract Entitlements xml1 -o - -
 
