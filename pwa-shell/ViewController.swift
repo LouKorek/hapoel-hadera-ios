@@ -291,5 +291,18 @@ extension ViewController: WKScriptMessageHandler {
         if message.name == "push-token" {
             handleFCMToken()
         }
+        // Haptic feedback requested by the page ("light", "medium", "success",
+        // "warning", "error") — the one thing a web view cannot fake.
+        if message.name == "haptic" {
+            let kind = (message.body as? String) ?? "light"
+            switch kind {
+            case "success": UINotificationFeedbackGenerator().notificationOccurred(.success)
+            case "warning": UINotificationFeedbackGenerator().notificationOccurred(.warning)
+            case "error": UINotificationFeedbackGenerator().notificationOccurred(.error)
+            case "medium": UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            case "selection": UISelectionFeedbackGenerator().selectionChanged()
+            default: UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            }
+        }
   }
 }

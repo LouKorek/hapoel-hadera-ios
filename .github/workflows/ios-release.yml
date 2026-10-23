@@ -45,6 +45,15 @@ jobs:
           echo "== embedded extensions =="; ls -la "$APP/PlugIns" 2>/dev/null || echo "(none)"
           for X in "$APP"/PlugIns/*.appex; do echo "== entitlements ($X) =="; codesign -d --entitlements - --xml "$X" | plutil -p - || true; done
           echo "== app groups in app =="; codesign -d --entitlements - --xml "$APP" | plutil -p - | grep -A2 application-groups || echo "(none)"
+          # Plain-word verdicts (the raw-log viewer redacts key/value lines).
+          APPENT=$(codesign -d --entitlements - --xml "$APP" 2>/dev/null)
+          case "$APPENT" in *group.il.co.hapoelhadera.app*) echo "VERDICT app has app group: yes";; *) echo "VERDICT app has app group: no";; esac
+          case "$APPENT" in *aps-environment*) echo "VERDICT app has aps: yes";; *) echo "VERDICT app has aps: no";; esac
+          for X in "$APP"/PlugIns/*.appex; do
+            E=$(codesign -d --entitlements - --xml "$X" 2>/dev/null)
+            case "$E" in *group.il.co.hapoelhadera.app*) echo "VERDICT widget has app group: yes";; *) echo "VERDICT widget has app group: no";; esac
+          done
+          grep -c "NSSupportsLiveActivities" "$APP/Info.plist" >/dev/null && echo "VERDICT live activities flag: yes" || echo "VERDICT live activities flag: no"
           echo "== live activities flag =="; plutil -extract NSSupportsLiveActivities raw -o - "$APP/Info.plist" || echo "(missing)"
           echo "== embedded profile: Entitlements =="; security cms -D -i "$APP/embedded.mobileprovision" | plutil -extract Entitlements xml1 -o - -
 
