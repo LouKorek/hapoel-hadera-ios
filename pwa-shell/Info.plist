@@ -47,11 +47,6 @@
 	<string>public.app-category.productivity</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsArbitraryLoads</key>
-		<true/>
-	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>Club staff can illustrate a news item with a photo. When you attach an image to an article and choose "Take Photo" instead of picking one from your library, the app opens the camera so you can shoot it on the spot — for example a picture from the training ground that goes straight into the match report. The camera is never used anywhere else in the app, and nothing is captured without you tapping the shutter.</string>
 	<key>UIApplicationSceneManifest</key>
