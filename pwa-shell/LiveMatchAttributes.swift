@@ -17,6 +17,10 @@ struct LiveMatchAttributes: ActivityAttributes {
         var status: String      // localised: "בעיצומו" / "מחצית" / "סיום" …
         var lastEvent: String   // localised one-liner: "⚽ 67' אלמוג ימהרן"
         var live: Bool          // false once the match has ended
+        // A clock the card runs by itself (1.6+): the timer interval whose
+        // mm:ss reads as the playing minute. Absent on older payloads.
+        var clockStart: Double?
+        var clockEnd: Double?
     }
 
     var matchId: String

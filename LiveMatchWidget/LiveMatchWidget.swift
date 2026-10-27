@@ -50,8 +50,7 @@ struct LiveMatchWidget: Widget {
                         .environment(\.layoutDirection, .leftToRight)
                 }
             } compactTrailing: {
-                Text(context.state.live ? (context.state.minute.isEmpty ? context.state.status : context.state.minute) : context.state.status)
-                    .font(.system(size: 12, weight: .bold))
+                MinuteText(state: context.state, size: 12)
                     .foregroundStyle(context.state.live ? clubRed : .secondary)
                     .lineLimit(1)
             } minimal: {
@@ -149,18 +148,47 @@ private struct ScoreBlock: View {
     }
 }
 
-// "● בעיצומו · 67'" on the leading side, the last event on the trailing side.
+// The minute. With a clock interval from the server (1.6+) the card counts
+// by itself between pushes — "47:12" like a broadcast clock, frozen at the
+// edge of the half (45:00, or 48:00 once added time is known) until the next
+// phase push. Otherwise the last pushed minute ("67'"), or the status word.
+private struct MinuteText: View {
+    let state: LiveMatchAttributes.ContentState
+    let size: CGFloat
+    var body: some View {
+        if state.live, let s = state.clockStart, let e = state.clockEnd, e > s {
+            Text(timerInterval: Date(timeIntervalSince1970: s)...Date(timeIntervalSince1970: e), countsDown: false, showsHours: false)
+                .font(.system(size: size, weight: .heavy, design: .rounded))
+                .monospacedDigit()
+                .environment(\.layoutDirection, .leftToRight)
+        } else {
+            Text(state.live ? (state.minute.isEmpty ? state.status : state.minute) : state.status)
+                .font(.system(size: size, weight: .bold))
+        }
+    }
+}
+
+// "● 47:12 · בעיצומו" on the leading side, the last event on the trailing side.
 private struct StatusLine: View {
     let state: LiveMatchAttributes.ContentState
+    var hasClock: Bool { state.live && state.clockStart != nil && state.clockEnd != nil }
     var body: some View {
         HStack(spacing: 8) {
-            HStack(spacing: 5) {
+            HStack(spacing: 6) {
                 if state.live {
                     Circle().fill(clubRed).frame(width: 7, height: 7)
                 }
-                Text(state.minute.isEmpty ? state.status : "\(state.status) · \(state.minute)")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(state.live ? .white : .white.opacity(0.75))
+                if hasClock {
+                    MinuteText(state: state, size: 15)
+                        .foregroundStyle(Color(red: 0.95, green: 0.70, blue: 0.24))
+                    Text(state.status)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.8))
+                } else {
+                    Text(state.minute.isEmpty ? state.status : "\(state.status) · \(state.minute)")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(state.live ? .white : .white.opacity(0.75))
+                }
             }
             .padding(.horizontal, 9).padding(.vertical, 4)
             .background(Color.white.opacity(0.10), in: Capsule())
