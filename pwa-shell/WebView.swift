@@ -68,7 +68,9 @@ func createWebView(container: UIView, WKSMH: WKScriptMessageHandler, WKND: WKNav
     let deviceModel = UIDevice.current.model
     let osVersion = UIDevice.current.systemVersion
     webView.configuration.applicationNameForUserAgent = "Safari/604.1"
-    webView.customUserAgent = "Mozilla/5.0 (\(deviceModel); CPU \(deviceModel) OS \(osVersion.replacingOccurrences(of: ".", with: "_")) like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/\(osVersion) Mobile/15E148 Safari/604.1 PWAShell"
+    webView.customUserAgent = "Mozilla/5.0 (\(deviceModel); CPU \(deviceModel) OS \(osVersion.replacingOccurrences(of: ".", with: "_")) like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/\(osVersion) Mobile/15E148 Safari/604.1 PWAShell HHApp/\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0")"
+    // HHApp/<version> (1.7+): the site compares it with the App Store
+    // version and offers "Update" when this copy is older.
 
     webView.addObserver(NSO, forKeyPath: #keyPath(WKWebView.estimatedProgress), options: NSKeyValueObservingOptions.new, context: nil)
     
